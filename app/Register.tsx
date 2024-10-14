@@ -12,7 +12,7 @@ const Register: React.FC = () => {
       <Image style={styles.logo} source={require('@/assets/images/logo-oficial-store.png')} />
 
       {/* Tiêu đề ngay dưới logo */}
-      <Text style={styles.baseText}>ĐĂNG KÝ TÀI KHOẢN</Text>
+      <Text style={styles.baseText}>ĐĂNG KÝ TÀI KHOẢN @</Text>
 
       {/* Các trường nhập liệu gần nhau */}
       <TextInput
