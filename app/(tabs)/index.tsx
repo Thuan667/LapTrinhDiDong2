@@ -1,13 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, FlatList, Text, TouchableOpacity, Image, StyleSheet, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { categories, products,banners } from './data'; // Thay đổi đường dẫn nếu cần
+import { categories,banners } from './data'; // Thay đổi đường dẫn nếu cần
+import axios from 'axios'; // Thêm Axios vào đây
+
+export interface Product {
+  id: string; // Hoặc number, tùy vào kiểu dữ liệu trong MySQL
+  name: string;
+  image_name: string;
+  price: number; // Hoặc string nếu giá được lưu dưới dạng chuỗi
+  // Thêm bất kỳ thuộc tính nào khác mà bạn nhận từ API
+}
+
 
 const SearchBarExample = () => {
   const [searchText, setSearchText] = useState('');
   const animatedValue = new Animated.Value(0);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const navigation = useNavigation();
+  const [products, setProducts] = useState<Product[]>([]);  // Thêm state cho products
 
   const handleProductPress = (productId: string) => {
     navigation.navigate('ProductDetailScreen', { id: productId });
@@ -29,6 +40,20 @@ const SearchBarExample = () => {
   const handleCartPress = (productName: string) => {
     console.log('Thêm vào giỏ hàng:', productName);
   };
+
+  useEffect(() => {
+    // Gọi API để lấy danh sách sản phẩm
+    const fetchProducts = async () => {
+      try {
+        const response = await axios.get(`http://localhost:8080/api/products`);
+        setProducts(response.data); 
+      } catch (error) {
+        console.error('Lỗi khi lấy sản phẩm:', error);
+      }
+    };
+
+    fetchProducts();
+  }, []);
 
   // Thực hiện animation cho banner
   useEffect(() => {
@@ -95,8 +120,7 @@ const SearchBarExample = () => {
           resizeMode="cover"
         />
       </Animated.View>
-
-      {/* Danh mục sản phẩm */}
+{/* Danh mục sản phẩm */}
       <Text style={styles.sectionTitle}>Danh Mục Sản Phẩm</Text>
       <View style={styles.underline} />
       <FlatList
@@ -112,39 +136,38 @@ const SearchBarExample = () => {
         showsHorizontalScrollIndicator={false}
       />
 
-      {/* Danh sách sản phẩm */}
-      <Text style={styles.sectionTitle}>Sản Phẩm Mới</Text>
+    {/* Danh sách sản phẩm */}
+    <Text style={styles.sectionTitle}>Sản Phẩm Mới</Text>
       <View style={styles.underline} />
       <FlatList
-  data={products}
-  keyExtractor={item => item.id}
-  renderItem={({ item }) => (
-    <View style={styles.productCard}>
-      <TouchableOpacity onPress={() => handleProductPress(item.id)}>
-        <Image source={item.image} style={styles.productImage} />
-      </TouchableOpacity>
-      <View style={styles.productInfo}>
-        <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productPrice}>{item.price}</Text>
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity
-            style={styles.buyButton}
-            onPress={() => handleBuyPress(item.name)}
-          >
-            <Text style={styles.buttonText}>Mua</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.cartButton}
-            onPress={() => handleCartPress(item.name)}
-          >
-            <Text style={styles.buttonText}>Giỏ hàng</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    </View>
-  )}
+        data={products}
+        keyExtractor={item => item.id.toString()}
+        renderItem={({ item }) => (
+          <View style={styles.productCard}>
+            <TouchableOpacity onPress={() => handleProductPress(item.id)}>
+            <Image
+  source={{ uri: item.image_name }}
+  style={styles.productImage}
+  onError={() => console.log('Lỗi khi tải hình ảnh:', item.image_name)}
 />
 
+
+            </TouchableOpacity>
+            <View style={styles.productInfo}>
+              <Text style={styles.productName}>{item.name}</Text>
+              <Text style={styles.productPrice}>{item.price} VND</Text>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity style={styles.buyButton} onPress={() => handleBuyPress(item.name)}>
+                  <Text style={styles.buttonText}>Mua</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.cartButton} onPress={() => handleCartPress(item.name)}>
+                  <Text style={styles.buttonText}>Giỏ hàng</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        )}
+      />
     </View>
   );
 };
@@ -222,7 +245,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
     lineHeight: 20,
   },
-  productCard: {
+productCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
