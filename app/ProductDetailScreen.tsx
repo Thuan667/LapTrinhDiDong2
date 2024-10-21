@@ -1,132 +1,229 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
-import { useRoute, RouteProp } from '@react-navigation/native';
-import { products } from './(tabs)/data'; // Đảm bảo đường dẫn đúng
+import React, { useState, useEffect } from 'react';
+import { View, Text, Image, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity } from 'react-native';
+import axios from 'axios';
+import { RouteProp, useRoute } from '@react-navigation/native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
-// Định nghĩa kiểu cho params
-type ProductDetailRouteProp = RouteProp<{ params: { id: string } }, 'params'>;
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;  // Đường dẫn ảnh
+  view_count: number; // Số lượt xem
+  rating: number;    // Đánh giá trung bình
+}
 
 const ProductDetailScreen = () => {
-  const route = useRoute<ProductDetailRouteProp>();
-  const { id } = route.params; // Lấy ID sản phẩm từ tham số điều hướng
-  const product = products.find(item => item.id === id); // Tìm sản phẩm dựa trên ID
+  const route = useRoute<RouteProp<{ params: { id: string } }, 'params'>>();
+  const { id } = route.params; // Lấy id sản phẩm từ params
+  const [product, set_product] = useState<Product | null>(null);
+  const [loading, set_loading] = useState(true);
+  const [error, set_error] = useState('');
+  const [user_rating, set_user_rating] = useState(0); // Đánh giá của người dùng
 
-  const [quantity, setQuantity] = useState('1'); 
+  const handle_product_detail_screen_press = () => {
+    router.push('/(tabs)');
+  };
 
-  if (!product) {
+  const handle_star_press = (rating: number) => {
+    set_user_rating(rating);
+  };
+
+  const handle_add_to_cart = () => {
+    console.log(`Thêm sản phẩm ${product?.name} vào giỏ hàng`);
+    // Logic để thêm sản phẩm vào giỏ hàng có thể được thêm vào đây
+  };
+
+  const handle_checkout = () => {
+    console.log(`Mua ngay sản phẩm ${product?.name}`);
+    // Logic để chuyển tới trang thanh toán có thể được thêm vào đây
+  };
+
+  useEffect(() => {
+    const fetch_product_details = async () => {
+      try {
+        const response = await axios.get(`http://localhost:8080/api/product/${id}`);
+        const product_data = response.data;
+
+        const image_response = await axios.get(
+          `http://localhost:8080/api/product/${product_data.id}/image`,
+          { responseType: 'blob' }
+        );
+        const image_url = URL.createObjectURL(image_response.data);
+
+        set_product({ ...product_data, imageUrl: image_url });
+        set_loading(false);
+      } catch (err) {
+        set_error('Có lỗi xảy ra khi tải sản phẩm');
+        set_loading(false);
+      }
+    };
+
+    fetch_product_details();
+  }, [id]);
+
+  if (loading) {
     return (
-    //   <View style={styles.container}>
-         <Text>Không tìm thấy sản phẩm.</Text>
-    //   </View>
-     );
+      <View style={styles.loading_container}>
+        <ActivityIndicator size="large" color="#FF0000" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.error_container}>
+        <Text style={styles.error_text}>{error}</Text>
+      </View>
+    );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContainer}>
-      <Image source={product.image} style={styles.image} />
-      <Text style={styles.name}>{product.name}</Text>
-      <Text style={styles.price}>{product.price}</Text>
-      <Text style={styles.description}>
-        Admire both the timeless legacy and the new era of Real Madrid CF with our new 24/25 Home Kit. 
-        The new pure and minimalist design looks back to the club's roots by exalting its iconic 'White'. 
-        The color that the greatest players in soccer history have proudly represented, and will continue to represent.
-      </Text>
-      
-      {/* Nhập số lượng sản phẩm */}
-      <View style={styles.quantityContainer}>
-        <Text style={styles.quantityLabel}>Số lượng:</Text>
-        <TextInput
-          style={styles.quantityInput}
-          keyboardType="numeric" // Chỉ cho phép nhập số
-          value={quantity}
-          onChangeText={setQuantity} // Cập nhật trạng thái khi người dùng nhập
-        />
-      </View>
-      
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Thêm vào giỏ hàng</Text>
+    product ? (
+      <ScrollView style={styles.container}>
+        {/* Nút quay lại */}
+        <TouchableOpacity style={styles.back} onPress={handle_product_detail_screen_press}>
+          <Ionicons name="arrow-back" size={35} color="black" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.button}>
-          <Text style={styles.buttonText}>Thanh toán</Text>
 
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+        {/* Hình ảnh sản phẩm */}
+        <Image source={{ uri: product.imageUrl }} style={styles.product_image} />
+
+        {/* Tên và giá sản phẩm */}
+        <Text style={styles.product_name}>{product.name}</Text>
+        <Text style={styles.product_price}>{product.price} VND</Text>
+
+
+
+        {/* Số lượt xem */}
+        <Text style={styles.view_count}>Lượt xem: {product.view_count}</Text>
+
+
+
+        {/* Đánh giá 5 sao */}
+        <View style={styles.rating_container}>
+          <Text style={styles.rating_label}>Đánh giá của bạn:</Text>
+          <View style={styles.stars_container}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <TouchableOpacity key={star} onPress={() => handle_star_press(star)}>
+                <Ionicons
+                  name={star <= user_rating ? 'star' : 'star-outline'}
+                  size={30}
+                  color={star <= user_rating ? '#FFD700' : '#CCCCCC'}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+          <Text style={styles.average_rating}>Đánh giá trung bình: {product.rating} / 5</Text>
+        </View>
+
+        {/* Mô tả sản phẩm */}
+        <Text style={styles.product_description}>{product.description}</Text>
+
+        {/* Nút Giỏ hàng và Mua ngay */}
+        <View style={styles.button_container}>
+          <TouchableOpacity style={styles.cart_button} onPress={handle_add_to_cart}>
+            <Text style={styles.button_text}>Thêm vào giỏ hàng</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.buy_button} onPress={handle_checkout}>
+            <Text style={styles.button_text}>Mua ngay</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    ) : null
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    flexGrow: 1,
-    alignItems: 'center',
+  container: {
+    flex: 1,
     padding: 20,
-    backgroundColor: '#f5f5f5',
   },
-  image: {
-    width: '100%',
+  product_image: {
+    width: 400,
     height: 300,
-    borderRadius: 10,
-    marginBottom: 15,
+    borderRadius: 15,
+    resizeMode: 'contain',
+    alignSelf: 'center',
+    marginBottom: 20,
   },
-  name: {
-    fontSize: 22,
+  product_name: {
+    fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 5,
-    textAlign: 'center',
-    color: '#333',
+    marginBottom: 10,
   },
-  price: {
+  product_price: {
     fontSize: 20,
     color: '#FF0000',
     marginBottom: 20,
-    textAlign: 'center',
   },
-  description: {
+  product_description: {
     fontSize: 16,
-    color: '#555',
-    textAlign: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 10,
+    lineHeight: 22,
+    marginBottom: 10,
   },
-  quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  view_count: {
+    fontSize: 16,
     marginBottom: 20,
-    width: '100%', // Đảm bảo chiều rộng đầy đủ
-    justifyContent: 'space-between', // Đặt khoảng cách giữa nhãn và input
   },
-  quantityLabel: {
+  rating_container: {
+    marginBottom: 20,
+  },
+  rating_label: {
     fontSize: 18,
-    color: '#333',
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
-  quantityInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 5,
-    padding: 10,
-    width: '30%', // Đặt chiều rộng cho input
-    textAlign: 'center', // Căn giữa văn bản trong input
+  stars_container: {
+    flexDirection: 'row',
+    marginBottom: 10,
   },
-  buttonContainer: {
+  average_rating: {
+    fontSize: 16,
+    color: '#FF0000',
+  },
+  loading_container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  error_container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  error_text: {
+    color: 'red',
+    fontSize: 18,
+  },
+  back: {
+    padding: 5,
+    marginTop: 10,
+    marginLeft: -10,
+  },
+  button_container: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '100%', // Đảm bảo chiều rộng đầy đủ
-    paddingHorizontal: 20, // Thêm padding cho nút
+    marginTop: 20,
   },
-  button: {
-    backgroundColor: '#FF0000',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
+  cart_button: {
+    backgroundColor: '#FF6347',
+    padding: 15,
     borderRadius: 5,
-    flex: 1, // Để các nút có cùng chiều rộng
-    marginHorizontal: 5, // Thêm khoảng cách giữa các nút
+    width: '48%',
   },
-  buttonText: {
-    color: '#fff',
-    fontWeight: 'bold',
+  buy_button: {
+    backgroundColor: '#32CD32',
+    padding: 15,
+    borderRadius: 5,
+    width: '48%',
+  },
+  button_text: {
+    color: '#FFFFFF',
     fontSize: 16,
-    textAlign: 'center', // Căn giữa văn bản trong nút
+    textAlign: 'center',
   },
 });
 

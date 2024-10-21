@@ -33,14 +33,14 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="+not-found" />
   
-      {/* <Stack.Screen
-          name="Chi tiết sản phẩm"
+      <Stack.Screen
+          name="ProductDetailScreen"
           options={{
             headerTitle: '', // Ẩn chữ "ProductDetail"
             headerBackVisible: false, // Ẩn nút quay lại
             headerShown: false
           }}
-        /> */}
+        />
             </Stack>
     </ThemeProvider>
   );
