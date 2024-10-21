@@ -10,6 +10,7 @@ export interface Product {
   image_name: string;
   price: number; // Hoặc string nếu giá được lưu dưới dạng chuỗi
   // Thêm bất kỳ thuộc tính nào khác mà bạn nhận từ API
+  imageUrl?:string;
 }
 
 
@@ -18,8 +19,10 @@ const SearchBarExample = () => {
   const animatedValue = new Animated.Value(0);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const navigation = useNavigation();
-  const [products, setProducts] = useState<Product[]>([]);  // Thêm state cho products
 
+  
+  const [products, setProducts] = useState<Product[]>([]);  // Thêm state cho products
+  const [error, setError] = useState('');
   const handleProductPress = (productId: string) => {
     navigation.navigate('ProductDetailScreen', { id: productId });
   };
@@ -42,16 +45,33 @@ const SearchBarExample = () => {
   };
 
   useEffect(() => {
-    // Gọi API để lấy danh sách sản phẩm
     const fetchProducts = async () => {
+  
       try {
-        const response = await axios.get(`http://localhost:8080/api/products`);
-        setProducts(response.data); 
+  
+        const response = await axios.get('http://localhost:8080/api/products');
+    
+        const productsWithImages = await Promise.all(response.data.map(async (product: Product) => {
+          try {
+            const imageResponse = await axios.get(
+              `http://localhost:8080/api/product/${product.id}/image`,
+              { responseType: "blob" }
+            );
+            const imageUrl = URL.createObjectURL(imageResponse.data);
+            return { ...product, imageUrl }; 
+          } catch (error) {
+            console.error("Error fetching image for product ID:", product.id, error);
+            return { ...product, imageUrl: "placeholder-image-url" };  
+          }
+        }));
+    
+        setProducts(productsWithImages);
       } catch (error) {
-        console.error('Lỗi khi lấy sản phẩm:', error);
+        console.error('Error fetching products:', error);
+        setError('Error fetching products');
       }
     };
-
+  
     fetchProducts();
   }, []);
 
@@ -77,6 +97,7 @@ const SearchBarExample = () => {
     startAnimation();
   }, [animatedValue]);
 
+
   // Cập nhật chỉ số banner hiện tại
   useEffect(() => {
     const interval = setInterval(() => {
@@ -90,6 +111,9 @@ const SearchBarExample = () => {
     inputRange: [0, 1],
     outputRange: [0, -10], // Điều chỉnh khoảng cách di chuyển
   });
+
+
+
 
   return (
     <View style={styles.container}>
@@ -136,6 +160,7 @@ const SearchBarExample = () => {
         showsHorizontalScrollIndicator={false}
       />
 
+
     {/* Danh sách sản phẩm */}
     <Text style={styles.sectionTitle}>Sản Phẩm Mới</Text>
       <View style={styles.underline} />
@@ -145,11 +170,17 @@ const SearchBarExample = () => {
         renderItem={({ item }) => (
           <View style={styles.productCard}>
             <TouchableOpacity onPress={() => handleProductPress(item.id)}>
-            <Image
-  source={{ uri: item.image_name }}
-  style={styles.productImage}
-  onError={() => console.log('Lỗi khi tải hình ảnh:', item.image_name)}
-/>
+
+
+            {item.imageUrl ? (
+          <Image
+            source={{ uri: item.imageUrl }}  
+            style={styles.productImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.productImage} />
+        )}
 
 
             </TouchableOpacity>
