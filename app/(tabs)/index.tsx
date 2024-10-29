@@ -1,39 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { View, TextInput, FlatList, Text, TouchableOpacity, Image, StyleSheet, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { categories,banners } from './data'; // Thay đổi đường dẫn nếu cần
+import { categories, banners } from './data'; // Đường dẫn tới dữ liệu
 import axios from 'axios'; // Thêm Axios vào đây
 
 export interface Product {
-  id: string; // Hoặc number, tùy vào kiểu dữ liệu trong MySQL
+  id: string; // Kiểu dữ liệu của ID sản phẩm
   name: string;
   image_name: string;
-  price: number; // Hoặc string nếu giá được lưu dưới dạng chuỗi
-  // Thêm bất kỳ thuộc tính nào khác mà bạn nhận từ API
-  imageUrl?:string;
+  price: number; // Giá sản phẩm
+  imageUrl?: string; // URL hình ảnh sản phẩm
 }
 
-
 const SearchBarExample = () => {
-  const [searchText, setSearchText] = useState('');
   const animatedValue = new Animated.Value(0);
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   const navigation = useNavigation();
-
-  
-  const [products, setProducts] = useState<Product[]>([]);  // Thêm state cho products
+  const [input, setInput] = useState("");
+  const [searchResults, setSearchResults] = useState<Product[]>([]);
+  const [noResults, setNoResults] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]); // State cho danh sách sản phẩm
   const [error, setError] = useState('');
+
   const handleProductPress = (productId: string) => {
     navigation.navigate('ProductDetailScreen', { id: productId });
-  };
-  
-
-  // const handleCategoryPress = (category) => {
-  //   navigation.navigate('CategoryScreen', { category });
-  // };
-
-  const onSearchPress = () => {
-    console.log('Tìm kiếm:', searchText);
   };
 
   const handleBuyPress = (productName: string) => {
@@ -44,38 +36,63 @@ const SearchBarExample = () => {
     console.log('Thêm vào giỏ hàng:', productName);
   };
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-  
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get('http://localhost:8080/api/products');
+      const productsWithImages = await Promise.all(response.data.map(async (product: Product) => {
+        try {
+          const imageResponse = await axios.get(`http://localhost:8080/api/product/${product.id}/image`, { responseType: "blob" });
+          const imageUrl = URL.createObjectURL(imageResponse.data);
+          return { ...product, imageUrl };
+        } catch (error) {
+          console.error("Error fetching image for product ID:", product.id, error);
+          return { ...product, imageUrl: "placeholder-image-url" }; // Placeholder nếu không lấy được hình ảnh
+        }
+      }));
+
+      setProducts(productsWithImages);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+      setError('Error fetching products');
+    }
+  };
+
+  const fetchData = async (value: string) => {
+    try {
+      const response = await axios.get("http://localhost:8080/api/products");
+      setSearchResults(response.data);
+      console.log(response.data);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
+
+  const handleChange = async (value: string) => {
+    setInput(value);
+    if (value.length >= 1) {
+      setShowSearchResults(true);
       try {
-  
-        const response = await axios.get('http://localhost:8080/api/products');
-    
-        const productsWithImages = await Promise.all(response.data.map(async (product: Product) => {
-          try {
-            const imageResponse = await axios.get(
-              `http://localhost:8080/api/product/${product.id}/image`,
-              { responseType: "blob" }
-            );
-            const imageUrl = URL.createObjectURL(imageResponse.data);
-            return { ...product, imageUrl }; 
-          } catch (error) {
-            console.error("Error fetching image for product ID:", product.id, error);
-            return { ...product, imageUrl: "placeholder-image-url" };  
-          }
-        }));
-    
-        setProducts(productsWithImages);
+        const response = await axios.get(
+          `http://localhost:8080/api/products/search?keyword=${value}`
+        );
+        setSearchResults(response.data);
+        setNoResults(response.data.length === 0);
+        console.log(response.data);
       } catch (error) {
-        console.error('Error fetching products:', error);
-        setError('Error fetching products');
+        console.error("Error searching:", error);
       }
-    };
-  
+    } else {
+      setShowSearchResults(false);
+      setSearchResults([]);
+      setNoResults(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
   }, []);
 
-  // Thực hiện animation cho banner
+  // Animation cho banner
   useEffect(() => {
     const startAnimation = () => {
       Animated.loop(
@@ -97,7 +114,6 @@ const SearchBarExample = () => {
     startAnimation();
   }, [animatedValue]);
 
-
   // Cập nhật chỉ số banner hiện tại
   useEffect(() => {
     const interval = setInterval(() => {
@@ -112,95 +128,102 @@ const SearchBarExample = () => {
     outputRange: [0, -10], // Điều chỉnh khoảng cách di chuyển
   });
 
-
-
-
-  return (
-    <View style={styles.container}>
-      {/* Thanh tìm kiếm */}
-      <View style={styles.searchContainer}>
-        <TouchableOpacity style={styles.loginButton}>
-          <Image
-            source={require('@/assets/images/logo-oficial-store.png')}
-            style={styles.loginIcon}
-          />
-        </TouchableOpacity>
-        <TextInput
-          style={styles.searchBar}
-          placeholder="Tìm kiếm..."
-          value={searchText}
-          onChangeText={setSearchText}
-        />
-        <TouchableOpacity style={styles.searchButton} onPress={onSearchPress}>
-          <Text style={styles.searchButtonText}>Tìm</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Banner */}
-      <Animated.View style={{ transform: [{ translateX }] }}>
+// Cập nhật mã dưới đây trong component SearchBarExample
+return (
+  <View style={styles.container}>
+    {/* Thanh tìm kiếm */}
+    <View style={styles.searchContainer}>
+      <TouchableOpacity style={styles.loginButton}>
         <Image
-          source={banners[currentBannerIndex]}
-          style={styles.banner}
-          resizeMode="cover"
+          source={require('@/assets/images/logo-oficial-store.png')}
+          style={styles.loginIcon}
         />
-      </Animated.View>
-{/* Danh mục sản phẩm */}
-      <Text style={styles.sectionTitle}>Danh Mục Sản Phẩm</Text>
-      <View style={styles.underline} />
-      <FlatList
-        data={categories}
-        keyExtractor={item => item.id}
-        horizontal={true}
-        renderItem={({ item }) => (
-          <View style={styles.categoryCard}>
-            <Image source={item.image} style={styles.categoryImage} />
-            <Text style={styles.categoryName}>{item.name}</Text>
-          </View>
-        )}
-        showsHorizontalScrollIndicator={false}
+      </TouchableOpacity>
+      <TextInput
+        style={styles.searchBar}
+        placeholder="Tìm kiếm"
+        value={input}
+        onChangeText={handleChange} // Sử dụng onChangeText thay cho onChange
+        onFocus={() => setSearchFocused(true)} 
+        onBlur={() => setSearchFocused(false)}
       />
+      {/* Kết quả tìm kiếm hiện dưới thanh tìm kiếm */}
+      {showSearchResults && (
+        <FlatList
+          data={searchResults}
+          keyExtractor={item => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity onPress={() => handleProductPress(item.id)}>
+              <Text>{item.name}</Text>
+            </TouchableOpacity>
+          )}
+          style={styles.searchResultsList} // Thêm style cho FlatList
+        />
+      )}
+    </View>
 
+    {/* Banner */}
+    <Animated.View style={{ transform: [{ translateX }] }}>
+      <Image
+        source={banners[currentBannerIndex]}
+        style={styles.banner}
+        resizeMode="cover"
+      />
+    </Animated.View>
+
+    {/* Danh mục sản phẩm */}
+    <Text style={styles.sectionTitle}>Danh Mục Sản Phẩm</Text>
+    <View style={styles.underline} />
+    <FlatList
+      data={categories}
+      keyExtractor={item => item.id}
+      horizontal={true}
+      renderItem={({ item }) => (
+        <View style={styles.categoryCard}>
+          <Image source={item.image} style={styles.categoryImage} resizeMode="cover" />
+          <Text style={styles.categoryName}>{item.name}</Text>
+        </View>
+      )}
+      showsHorizontalScrollIndicator={false}
+    />
 
     {/* Danh sách sản phẩm */}
     <Text style={styles.sectionTitle}>Sản Phẩm Mới</Text>
-      <View style={styles.underline} />
-      <FlatList
-        data={products}
-        keyExtractor={item => item.id.toString()}
-        renderItem={({ item }) => (
-          <View style={styles.productCard}>
-            <TouchableOpacity onPress={() => handleProductPress(item.id)}>
-
-
+    <View style={styles.underline} />
+    <FlatList
+      data={products}
+      keyExtractor={item => item.id.toString()}
+      renderItem={({ item }) => (
+        <View style={styles.productCard}>
+          <TouchableOpacity onPress={() => handleProductPress(item.id)}>
             {item.imageUrl ? (
-          <Image
-            source={{ uri: item.imageUrl }}  
-            style={styles.productImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={styles.productImage} />
-        )}
-
-
-            </TouchableOpacity>
-            <View style={styles.productInfo}>
-              <Text style={styles.productName}>{item.name}</Text>
-              <Text style={styles.productPrice}>{item.price} VND</Text>
-              <View style={styles.buttonContainer}>
-                <TouchableOpacity style={styles.buyButton} onPress={() => handleBuyPress(item.name)}>
-                  <Text style={styles.buttonText}>Mua</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.cartButton} onPress={() => handleCartPress(item.name)}>
-                  <Text style={styles.buttonText}>Giỏ hàng</Text>
-                </TouchableOpacity>
-              </View>
+              <Image
+                source={{ uri: item.imageUrl }}
+                style={styles.productImage}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.productImage} />
+            )}
+          </TouchableOpacity>
+          <View style={styles.productInfo}>
+            <Text style={styles.productName}>{item.name}</Text>
+            <Text style={styles.productPrice}>{item.price} VND</Text>
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity style={styles.buyButton} onPress={() => handleBuyPress(item.name)}>
+                <Text style={styles.buttonText}>Mua</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.cartButton} onPress={() => handleCartPress(item.name)}>
+                <Text style={styles.buttonText}>Giỏ hàng</Text>
+              </TouchableOpacity>
             </View>
           </View>
-        )}
-      />
-    </View>
-  );
+        </View>
+      )}
+    />
+  </View>
+);
+
 };
 
 const styles = StyleSheet.create({
@@ -222,16 +245,6 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     paddingLeft: 10,
   },
-  searchButton: {
-    backgroundColor: '#FF0000',
-    padding: 10,
-    marginLeft: 10,
-    borderRadius: 5,
-  },
-  searchButtonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
   loginButton: {
     marginLeft: 10,
   },
@@ -240,99 +253,92 @@ const styles = StyleSheet.create({
     height: 35,
   },
   banner: {
+
     width: '100%',
-    height: 150,
+    height: 200,
+    borderRadius: 10,
     marginBottom: 20,
   },
+
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 2,
-    textAlign: 'center',
+    marginBottom: 10,
   },
   underline: {
-    width: '100%',
     height: 2,
-    backgroundColor: '#000000',
-    marginBottom: 3,
+    backgroundColor: '#FF0000',
+    width: '30%',
+    marginBottom: 20,
   },
-  categoryCard: {
-    alignItems: 'center',
-    marginRight: 10,
-    width: 120,
-    height: 200,
-    justifyContent: 'flex-start',
-  },
-  categoryImage: {
-    width: 100,
-    height: 70,
-    borderRadius: 4,
-    marginBottom: 5,
-  },
+  // Styles
+categoryCard: {
+  marginRight: 20,
+  alignItems: 'center',
+  flexDirection: 'column', // Đảm bảo các thành phần nằm theo cột
+  width: 100,
+  height:350, // Thay đổi chiều rộng để phù hợp với nội dung
+},
+categoryImage: {
+  width: '100%', // Đặt chiều rộng là 100% để chiếm hết không gian của card
+  height: 80, // Điều chỉnh chiều cao nếu cần
+  borderRadius: 10, // Đường bo viền nếu cần
+  marginBottom: 5,
+},
+
   categoryName: {
-    fontSize: 14,
+    fontSize: 15,
     textAlign: 'center',
-    marginTop: 5,
-    paddingHorizontal: 5,
-    lineHeight: 20,
   },
-productCard: {
+  productCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderColor: '#ddd',
+    marginBottom: 20,
     borderWidth: 1,
+    borderColor: '#ddd',
     borderRadius: 5,
-    marginBottom: 10,
+    overflow: 'hidden',
   },
   productImage: {
     width: 100,
     height: 100,
-    borderRadius: 5,
-    marginRight: 10,
+    backgroundColor: '#f0f0f0',
   },
   productInfo: {
     flex: 1,
+    padding: 10,
   },
   productName: {
     fontSize: 16,
     fontWeight: 'bold',
-    marginBottom: 5,
   },
   productPrice: {
     fontSize: 14,
     color: '#FF0000',
-    marginBottom: 10,
   },
   buttonContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 10,
   },
   buyButton: {
     backgroundColor: '#FF0000',
-    paddingVertical: 5,
-    paddingHorizontal: 15,
+    padding: 10,
     borderRadius: 5,
   },
   cartButton: {
-    backgroundColor: '#000000',
-    paddingVertical: 5,
-    paddingHorizontal: 15,
+    backgroundColor: '#ccc',
+    padding: 10,
     borderRadius: 5,
-    marginLeft: 10,
   },
   buttonText: {
-    color: '#FFF',
-    fontWeight: 'bold',
+    color: '#fff',
+    textAlign: 'center',
   },
-  footer: {
-    padding: 20,
-    alignItems: 'center',
+  searchResultsList: {
+    top: 10, // Điều chỉnh khoảng cách từ đầu trang
+    zIndex: 1, // Đảm bảo danh sách ở trên cùng
   },
-  footerText: {
-    color: '#FF0000',
-    fontWeight: 'bold',
-  },
+  
 });
 
 export default SearchBarExample;
