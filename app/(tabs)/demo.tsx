@@ -1,154 +1,121 @@
 import React, { useState } from 'react';
-import { StyleSheet, Image, View, Text, TextInput, TouchableOpacity } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
- 
+import AuthService from '../AuthService';
 
-export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+const Login = () => {
   const navigation = useNavigation();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
+
+  const handleLogin = async () => {
+    setMessage('');
+    setLoading(true);
+
+    try {
+      const response = await AuthService.login(username, password);
+      console.log("Đăng nhập thành công", "Chào mừng bạn quay lại!");
+      navigation.navigate('index'); // Chuyển đến màn hình Home sau khi đăng nhập thành công
+    } catch (error) {
+      const resMessage = 
+        error instanceof Error
+          ? error.message
+          : "Có lỗi xảy ra. Vui lòng thử lại!";
+      setMessage(resMessage);
+      console.log("Đăng nhập thất bại", resMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const navigateToRegister = () => {
-    navigation.navigate('Register');
+    navigation.navigate('Register'); // Chuyển đến màn hình Register
   };
-   
+
   return (
     <View style={styles.container}>
-      {/* Logo */}
-      <Image
-        style={styles.logo}
-        source={require('@/assets/images/logo-oficial-store.png')}  
-      />
-      
-      <Text style={styles.baseText}>Welcome RealMadrid Store </Text>
-  
+      <Text style={styles.header}>Đăng Nhập</Text>
       <TextInput
+        placeholder="Tên đăng nhập"
         style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#888"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
+        value={username}
+        onChangeText={setUsername}
       />
- 
       <TextInput
-        style={styles.inputt}
         placeholder="Mật khẩu"
-        placeholderTextColor="#888"
+        style={styles.input}
+        secureTextEntry
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
       />
-
-      <View style={styles.loginButton}>
-        <Text style={styles.buttonText}>Đăng nhập</Text>
-      </View>
-
-      {/* <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text> */}
-      <Text style={styles.forgotPasswordText}>Bạn chưa có tài khoản?
+      <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        {loading ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Đăng nhập</Text>
+        )}
+      </TouchableOpacity>
+      {message ? <Text style={styles.errorText}>{message}</Text> : null}
+      <Text style={styles.forgotPasswordText}>Bạn chưa có tài khoản?</Text>
       <TouchableOpacity onPress={navigateToRegister}>
-      <Text 
-        style={styles.textRegister}> Đăng ký
-        </Text>
-        </TouchableOpacity>
-     
-        
-     
-      </Text>
-
-      <View style={styles.socialButton}>
-        <Ionicons name="logo-google" size={24} color="white" />
-        <Text style={styles.socialButtonText}>Đăng nhập bằng Google</Text>
-      </View>
-
-      <View style={[styles.socialButton, styles.facebookButton]}>
-        <Ionicons name="logo-facebook" size={24} color="white" />
-        <Text style={styles.socialButtonText}>Đăng nhập bằng Facebook</Text>
-      </View>
+        <Text style={styles.registerText}>Đăng ký ngay</Text>
+      </TouchableOpacity>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
+    padding: 20,
+    backgroundColor: '#f8f9fa',
   },
-  logo: {
-    width: 350,
-    height: 200,
-    resizeMode: 'contain',
-    marginTop: 20,  // Giảm khoảng cách phía trên của logo
-    marginBottom: 10,  // Giảm khoảng cách giữa logo và tiêu đề
+  header: {
+    fontSize: 28,
+    marginBottom: 24,
+    textAlign: 'center',
+    fontWeight: 'bold',
+    color: '#343a40',
   },
   input: {
-    width: '100%',
     height: 50,
-    borderColor: '#ccc',
+    borderColor: 'gray',
     borderWidth: 1,
-    borderRadius: 40,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    fontSize: 16,
+    borderRadius: 5,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#ffffff',
   },
-  inputt: {
-    width: '100%',
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 40,
-    paddingHorizontal: 15,
-    marginBottom: 20,
-    fontSize: 16,
-  },
-  loginButton: {
-    backgroundColor: '#000000',
-    padding: 15,
-    borderRadius: 40,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 22,
+  button: {
+    backgroundColor: '#dc3545', // Màu đỏ
+    paddingVertical: 12,
+    borderRadius: 5,
+    marginTop: 12,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 18,
+    color: '#ffffff',
+    textAlign: 'center',
+    fontWeight: 'bold',
   },
   forgotPasswordText: {
-    color: '#66FF99',
-    marginBottom: 10,
-    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 12,
+    color: '#343a40',
   },
-  socialButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FF0000',
-    padding: 8,
-    borderRadius: 40,
-    width: '100%',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  facebookButton: {
-    backgroundColor: '#00FFFF',
-  },
-  socialButtonText: {
-    color: 'white',
-    fontSize: 16,
-    marginLeft: 10,
-  },
-  baseText: {
-    color: 'black',
+  registerText: {
+    textAlign: 'center',
+    color: '#dc3545', // Màu đỏ
     fontWeight: 'bold',
-    fontSize: 20,
-    marginBottom: 20, 
+    marginTop: 4,
   },
-  textRegister: {
+  errorText: {
     color: 'red',
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
+
+export default Login;

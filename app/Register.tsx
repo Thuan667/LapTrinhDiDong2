@@ -1,125 +1,217 @@
-   import React, { useState } from 'react';
-import { StyleSheet, Image, View, Text, TextInput, TouchableOpacity } from 'react-native';
+import React, { Component } from "react";
+import { View, TextInput, Button, Text, StyleSheet, TouchableOpacity } from "react-native";
+import AuthService from "./AuthService";
 
-const Register: React.FC = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+// Kiểm tra trường nhập liệu có rỗng hay không
+const required = (value: string): string | undefined => {
+  if (!value) {
+    return "This field is required!";
+  }
+  return undefined; // Thay đổi từ null thành undefined
+};
 
-  return (
-    <View style={styles.container}>
-      {/* Di chuyển logo lên gần đầu trang */}
-      <Image style={styles.logo} source={require('@/assets/images/logo-oficial-store.png')} />
+// Kiểm tra username có đủ độ dài yêu cầu không
+const vusername = (value: string): string | undefined => {
+  if (value.length < 3 || value.length > 20) {
+    return "The username must be between 3 and 20 characters.";
+  }
+  return undefined; // Thay đổi từ null thành undefined
+};
 
-      {/* Tiêu đề ngay dưới logo */}
-      <Text style={styles.baseText}>ĐĂNG KÝ TÀI KHOẢN @</Text>
+// Kiểm tra password có đủ độ dài yêu cầu không
+const vpassword = (value: string): string | undefined => {
+  if (value.length < 6 || value.length > 40) {
+    return "The password must be between 6 and 40 characters.";
+  }
+  return undefined; // Thay đổi từ null thành undefined
+};
 
-      {/* Các trường nhập liệu gần nhau */}
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        placeholderTextColor="#888"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
+interface State {
+  username: string;
+  email: string;
+  password: string;
+  errors: {
+    username?: string;
+    email?: string;
+    password?: string;
+  };
+  successful: boolean;
+  message: string;
+}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Mật khẩu"
-        placeholderTextColor="#888"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
-      />
+class Register extends Component<{}, State> {
+  constructor(props: {}) {
+    super(props);
+    this.handleRegister = this.handleRegister.bind(this);
+    this.onChangeUsername = this.onChangeUsername.bind(this);
+    this.onChangeEmail = this.onChangeEmail.bind(this);
+    this.onChangePassword = this.onChangePassword.bind(this);
 
-      <TextInput
-        style={styles.inputt}
-        placeholder="Nhập lại mật khẩu"
-        placeholderTextColor="#888"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-        autoCapitalize="none"
-      />
+    this.state = {
+      username: "",
+      email: "",
+      password: "",
+      errors: {},
+      successful: false,
+      message: "",
+    };
+  }
 
-      <View style={styles.registerButton}>
-        <Text style={styles.buttonText}>Đăng ký</Text>
-      </View>
+  onChangeUsername(username: string) {
+    this.setState({
+      username,
+      errors: { ...this.state.errors, username: vusername(username) }
+    });
+  }
 
-      <Text style={styles.loginText}>
-        Đã có tài khoản?{' '}
-        <TouchableOpacity>
-          <Text style={styles.textLogin}>Đăng nhập</Text>
+  onChangeEmail(email: string) {
+    this.setState({
+      email,
+      errors: { ...this.state.errors, email: required(email) }
+    });
+  }
+
+  onChangePassword(password: string) {
+    this.setState({
+      password,
+      errors: { ...this.state.errors, password: vpassword(password) }
+    });
+  }
+
+  validateForm() {
+    const errors = {
+      username: vusername(this.state.username),
+      email: required(this.state.email),
+      password: vpassword(this.state.password),
+    };
+    this.setState({ errors });
+    return !Object.values(errors).some((error) => error !== undefined);
+  }
+
+  handleRegister() {
+    this.setState({
+      message: "",
+      successful: false,
+    });
+
+    if (this.validateForm()) {
+      AuthService.register(this.state.username, this.state.email, this.state.password).then(
+        (response) => {
+          console.log("Đăng ký thành công"); 
+          this.setState({
+            message: response.data.message,
+            successful: true,
+          });
+        },
+        (error) => {
+          const resMessage =
+            (error.response && error.response.data && error.response.data.message) ||
+            error.message ||
+            error.toString();
+
+          this.setState({
+            successful: false,
+            message: resMessage,
+          });
+        }
+      );
+    }
+  }
+
+  render() {
+    const { errors } = this.state;
+
+    return (
+      <View style={styles.container}>
+        <Text style={styles.header}>Sign Up</Text>
+
+        <TextInput
+          placeholder="Username"
+          style={styles.input}
+          onChangeText={this.onChangeUsername}
+          value={this.state.username}
+        />
+        {errors.username && (
+          <Text style={styles.errorText}>{errors.username}</Text>
+        )}
+
+        <TextInput
+          placeholder="Email"
+          style={styles.input}
+          keyboardType="email-address"
+          onChangeText={this.onChangeEmail}
+          value={this.state.email}
+        />
+        {errors.email && (
+          <Text style={styles.errorText}>{errors.email}</Text>
+        )}
+
+        <TextInput
+          placeholder="Password"
+          style={styles.input}
+          secureTextEntry
+          onChangeText={this.onChangePassword}
+          value={this.state.password}
+        />
+        {errors.password && (
+          <Text style={styles.errorText}>{errors.password}</Text>
+        )}
+
+        <TouchableOpacity style={styles.button} onPress={this.handleRegister}>
+          <Text style={styles.buttonText}>Sign Up</Text>
         </TouchableOpacity>
-      </Text>
-    </View>
-  );
+
+        {this.state.message && (
+          <Text style={this.state.successful ? styles.successText : styles.errorText}>
+            {this.state.message}
+          </Text>
+        )}
+      </View>
+    );
+  }
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'flex-start',  
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    paddingTop: 3, // Giảm khoảng cách từ đầu trang
+    justifyContent: "center",
+    padding: 16,
+    backgroundColor: '#f8f9fa', // Thêm màu nền
   },
-  logo: {
-    width: 350,
-    height: 200,
-    resizeMode: 'contain',
-    marginTop: 20,  // Giảm khoảng cách phía trên của logo
-    marginBottom: 20,  // Giảm khoảng cách giữa logo và tiêu đề
+  header: {
+    fontSize: 28,
+    marginBottom: 24,
+    textAlign: "center",
+    fontWeight: 'bold',
+    color: '#343a40', // Màu chữ
   },
   input: {
-    width: '100%',
     height: 50,
-    borderColor: '#ccc',
+    borderColor: 'gray',
     borderWidth: 1,
-    borderRadius: 40,
-    paddingHorizontal: 15,
-    marginBottom: 15,
-    fontSize: 16,
+    borderRadius: 5, // Bo góc
+    marginBottom: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#ffffff', // Màu nền input
   },
-  inputt: {
-    width: '100%',
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 40,
-    paddingHorizontal: 15,
-    marginBottom: 30,
-    fontSize: 16,
+  errorText: {
+    color: 'red',
+    marginBottom: 8,
   },
-  registerButton: {
-    backgroundColor: '#000000',
-    padding: 15,
-    borderRadius: 40,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 20,
+  successText: {
+    color: 'green',
+    marginTop: 12,
+  },
+  button: {
+    backgroundColor: '#007bff', // Màu nút
+    paddingVertical: 12,
+    borderRadius: 5, // Bo góc
+    marginTop: 12,
   },
   buttonText: {
-    color: 'white',
-    fontSize: 18,
-  },
-  baseText: {
-    color: 'black',
+    color: '#ffffff',
+    textAlign: 'center',
     fontWeight: 'bold',
-    fontSize: 30,
-    marginBottom: 30,  // Giảm khoảng cách giữa tiêu đề và trường nhập liệu
-  },
-  loginText: {
-    color: '#66FF99',
-    marginTop: 20,
-    fontSize: 16,
-  },
-  textLogin: {
-    color: 'red',
   },
 });
 

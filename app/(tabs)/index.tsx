@@ -172,7 +172,7 @@ return (
     </Animated.View>
 
     {/* Danh mục sản phẩm */}
-    <Text style={styles.sectionTitle}>Danh Mục Sản Phẩm</Text>
+    <Text style={styles.sectionTitle}>Danh Mục</Text>
     <View style={styles.underline} />
     <FlatList
       data={categories}
@@ -188,7 +188,7 @@ return (
     />
 
     {/* Danh sách sản phẩm */}
-    <Text style={styles.sectionTitle}>Sản Phẩm Mới</Text>
+    <Text style={styles.sectionTitle}>Sản Phẩm</Text>
     <View style={styles.underline} />
     <FlatList
       data={products}
